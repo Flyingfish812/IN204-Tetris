@@ -1,0 +1,21 @@
+{
+    "configurations": [
+        {
+            "name": "MSYS2-Mingw64",
+            "includePath": [
+                "${workspaceFolder}/include",
+                "${workspaceFolder}/include/SDL2",
+                "C:/msys64/mingw64/include"       // MSYS2 Mingw 的头文件路径
+            ],
+            "defines": [
+                "_DEBUG",
+                "UNICODE"
+            ],
+            "compilerPath": "C:/msys64/mingw64/bin/g++.exe", // MSYS2 Mingw 的 g++ 路径
+            "cStandard": "c11",
+            "cppStandard": "c++20",
+            "intelliSenseMode": "windows-gcc-x64"
+        }
+    ],
+    "version": 4
+}
