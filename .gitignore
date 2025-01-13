@@ -1,3 +1,4 @@
 *.o
 test
 *.exe
+debug_log.txt

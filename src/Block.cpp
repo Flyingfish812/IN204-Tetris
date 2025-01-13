@@ -26,12 +26,25 @@ const std::vector<std::vector<std::vector<int>>> SHAPES = {
      {1, 1, 0}}
 };
 
+const int BASIC_COLORS[] = {
+    0xFF0000, // 红色
+    0xFF7F00, // 橙色
+    0xFFFF00, // 黄色
+    0x00FF00, // 绿色
+    0x00FFFF, // 青色
+    0x0000FF, // 蓝色
+    0x8B00FF, // 紫色
+    0xFF69B4  // 粉色
+};
+
+const int NUM_BASIC_COLORS = sizeof(BASIC_COLORS) / sizeof(BASIC_COLORS[0]);
+
 Block::Block() {
-    type = static_cast<BlockType>(rand() % 7); // 随机生成类型
-    shape = SHAPES[type];                     // 初始化形状
-    color = rand() % 0xFFFFFF;                // 随机颜色
-    x = 3;                                    // 起始位置（网格中间偏左）
-    y = 0;                                    // 起始位置（网格顶部）
+    type = static_cast<BlockType>(rand() % 7);            // 随机生成类型
+    shape = SHAPES[type];                                 // 初始化形状
+    color = BASIC_COLORS[rand() % NUM_BASIC_COLORS];      // 随机颜色
+    x = 3;                                                // 起始位置（网格中间偏左）
+    y = 0;                                                // 起始位置（网格顶部）
 }
 
 void Block::rotate() {
@@ -57,6 +70,10 @@ void Block::move(int dx, int dy) {
 std::vector<std::vector<int>> Block::getShape() const {
     return shape;
 }
+
+BlockType Block::getType() const { return type; }
+
+int Block::getColor() const { return color; }
 
 int Block::getX() const { return x; }
 int Block::getY() const { return y; }

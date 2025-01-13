@@ -3,6 +3,7 @@
 
 Grid::Grid(int width, int height) : width(width), height(height) {
     grid.resize(height, std::vector<int>(width, 0)); // 初始化网格为 0
+    gridColors.resize(height, std::vector<int>(width, 0)); // 初始化网格颜色为 0
 }
 
 bool Grid::canPlace(const Block& block) const {
@@ -10,8 +11,8 @@ bool Grid::canPlace(const Block& block) const {
     int x = block.getX();
     int y = block.getY();
 
-    for (int i = 0; i < shape.size(); ++i) {
-        for (int j = 0; j < shape[i].size(); ++j) {
+    for (size_t i = 0; i < shape.size(); ++i) {
+        for (size_t j = 0; j < shape[i].size(); ++j) {
             if (shape[i][j]) { // 仅检查方块占据的格子
                 int newX = x + j;
                 int newY = y + i;
@@ -35,15 +36,17 @@ void Grid::placeBlock(const Block& block) {
     auto shape = block.getShape();
     int x = block.getX();
     int y = block.getY();
+    int color = block.getColor();
 
-    for (int i = 0; i < shape.size(); ++i) {
-        for (int j = 0; j < shape[i].size(); ++j) {
+    for (size_t i = 0; i < shape.size(); ++i) {
+        for (size_t j = 0; j < shape[i].size(); ++j) {
             if (shape[i][j]) {
                 int newX = x + j;
                 int newY = y + i;
 
                 if (newY >= 0 && newY < height && newX >= 0 && newX < width) {
                     grid[newY][newX] = 1; // 将方块固定到网格中
+                    gridColors[newY][newX] = color; // 存储颜色
                 }
             }
         }
@@ -63,11 +66,12 @@ int Grid::clearLines() {
         }
 
         if (isFullLine) {
-            // 清除当前行，并将其上方的行下移
             for (int k = i; k > 0; --k) {
-                grid[k] = grid[k - 1]; // 将上一行复制到当前行
+                grid[k] = grid[k - 1]; // 下移
+                gridColors[k] = gridColors[k - 1]; // 下移颜色
             }
             grid[0] = std::vector<int>(width, 0); // 顶部行清空
+            gridColors[0] = std::vector<int>(width, 0); // 清空顶部行颜色
             ++clearedLines;
         }
     }
@@ -75,23 +79,35 @@ int Grid::clearLines() {
     return clearedLines;
 }
 
-void Grid::render(SDL_Renderer* renderer) {
-    SDL_SetRenderDrawColor(renderer, 50, 50, 50, 255); // 网格线颜色
+void Grid::render(SDL_Renderer* renderer, int windowWidth, int windowHeight) {
+    // 动态计算网格大小
+    gridPixelHeight = windowHeight * 0.9; // 80% 的窗口高度
+    cellSize = gridPixelHeight / height; // 每个方块的大小
+    gridPixelWidth = cellSize * width;  // 网格宽度由列数确定
+
+    // 左对齐网格
+    // gridXOffset = (windowWidth - gridPixelWidth) / 2;
+    gridXOffset = windowHeight * 0.05;
+    gridYOffset = (windowHeight - gridPixelHeight) / 2;
 
     // 绘制网格线
+    SDL_SetRenderDrawColor(renderer, 50, 50, 50, 255);
     for (int i = 0; i <= height; ++i) {
-        SDL_RenderDrawLine(renderer, 200, 50 + i * 20, 400, 50 + i * 20);
+        SDL_RenderDrawLine(renderer, gridXOffset, gridYOffset + i * cellSize,
+                           gridXOffset + gridPixelWidth, gridYOffset + i * cellSize);
     }
     for (int j = 0; j <= width; ++j) {
-        SDL_RenderDrawLine(renderer, 200 + j * 20, 50, 200 + j * 20, 450);
+        SDL_RenderDrawLine(renderer, gridXOffset + j * cellSize, gridYOffset,
+                           gridXOffset + j * cellSize, gridYOffset + gridPixelHeight);
     }
 
-    // 绘制网格中的方块
+    // 绘制网格中的固定方块
     for (int i = 0; i < height; ++i) {
         for (int j = 0; j < width; ++j) {
             if (grid[i][j]) {
-                SDL_Rect rect = {200 + j * 20, 50 + i * 20, 20, 20};
-                SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255); // 固定方块颜色
+                SDL_Rect rect = {gridXOffset + j * cellSize, gridYOffset + i * cellSize, cellSize, cellSize};
+                int color = gridColors[i][j];
+                SDL_SetRenderDrawColor(renderer, (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF, 255);
                 SDL_RenderFillRect(renderer, &rect);
             }
         }

@@ -11,6 +11,8 @@ public:
     void rotate();
     void move(int dx, int dy);
     std::vector<std::vector<int>> getShape() const;
+    BlockType getType() const;
+    int getColor() const;
     int getX() const;
     int getY() const;
 

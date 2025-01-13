@@ -20,11 +20,18 @@ private:
     SDL_Renderer* renderer;
     bool paused;
     bool quit;
-    void showPauseMenu();
+    
     Block* currentBlock;
+    Block* nextBlock;
     Grid* grid;
+
+    int score;
     unsigned int speed;           // 当前下落速度
     int timer;
+
+    void showPauseMenu();
+    void renderStatusBox(int windowWidth, int windowHeight);
+    void renderBlock(Block* block, SDL_Rect displayArea);
 };
 
 #endif
