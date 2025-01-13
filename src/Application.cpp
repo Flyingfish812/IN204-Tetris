@@ -3,6 +3,8 @@
 #include <iostream>
 #include <string>
 
+std::ofstream logFile;
+
 // 初始化日志文件
 void initLog() {
     logFile.open("debug_log.txt", std::ios::out | std::ios::trunc);

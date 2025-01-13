@@ -11,7 +11,7 @@ void Menu::show() {
     bool quit = false;
 
     TTF_Init();
-    TTF_Font* font = TTF_OpenFont("src/arial.ttf", 24);
+    TTF_Font* font = TTF_OpenFont("fonts/arial.ttf", 24);
     SDL_Color textColor = {0, 0, 0, 0};
 
     SDL_Surface* startTextSurface = TTF_RenderText_Solid(font, "Start Game", textColor);
