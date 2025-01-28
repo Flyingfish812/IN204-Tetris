@@ -9,12 +9,12 @@ extern std::ofstream logFile;
 extern void log(const std::string& message);
 
 Network::Network() : ioContext(), socket(ioContext) {
-    // ioContext.run();
     playerList.reserve(4);
     connectedEndpoints.reserve(10);
     log("Network initialized");
 }
 
+// Start listening on a specific port
 void Network::startListening(int port) {
     try {
         boost::asio::ip::udp::endpoint endpoint(boost::asio::ip::udp::v4(), port);
@@ -22,13 +22,8 @@ void Network::startListening(int port) {
         socket.set_option(boost::asio::socket_base::reuse_address(true));
         socket.bind(endpoint);
         hostEndpoint = endpoint;
-        // auto assignedPort = socket.local_endpoint().port();
         log("Listening started on port " + socket.local_endpoint().address().to_string() + ":" + std::to_string(port));
-        if (!gameStarted) {
-            listenForUpdates();
-        } else {
-            listenForGameUpdates();
-        }
+        listenForUpdates();
         std::thread([this]() {
             try {
                 ioContext.run();
@@ -50,13 +45,13 @@ void Network::listenForUpdates() {
                 std::string message(buffer.data(), bytesTransferred);
                 log("Message received: " + message);
 
+                // Process the message based on the content
                 if (message.rfind("PLAYER_LIST:", 0) == 0) {
                     handlePlayerListUpdate(message);
                 } else if (message == "JOIN_ROOM") {
                     handleJoinRoomRequest(senderEndpoint, message);
                 } else if (message.rfind("NEW_CLIENT:", 0) == 0) {
-                    // 处理新客户端广播
-                    std::string endpointStr = message.substr(11); // 跳过 "NEW_CLIENT:"
+                    std::string endpointStr = message.substr(11);
                     auto delimiterPos = endpointStr.find(':');
                     std::string ip = endpointStr.substr(0, delimiterPos);
                     int port = std::stoi(endpointStr.substr(delimiterPos + 1));
@@ -125,21 +120,21 @@ bool Network::joinRoom(const std::string& address, int port) {
         boost::asio::ip::udp::endpoint remoteEndpoint(boost::asio::ip::make_address(address), port);
         hostEndpoint = remoteEndpoint;
 
-        // 发送加入房间请求
+        // Send request
         std::string joinMessage = "JOIN_ROOM";
         socket.send_to(boost::asio::buffer(joinMessage), remoteEndpoint);
         log("Joining room at " + address + ":" + std::to_string(port));
 
-        // 接收房主发送的响应
+        // Accept response
         char buffer[1024] = {0};
         boost::asio::ip::udp::endpoint senderEndpoint;
         size_t bytesReceived = socket.receive_from(boost::asio::buffer(buffer), senderEndpoint);
 
-        // 解析房主的响应消息
+        // Analyze response
         std::string response(buffer, bytesReceived);
         if (response.rfind("PLAYER_LIST:", 0) == 0) {
             playerList.clear();
-            std::istringstream ss(response.substr(12)); // 跳过 "PLAYER_LIST:"
+            std::istringstream ss(response.substr(12)); // Skip "PLAYER_LIST:"
             std::string player;
             while (std::getline(ss, player, ',')) {
                 playerList.push_back(player);
@@ -147,7 +142,7 @@ bool Network::joinRoom(const std::string& address, int port) {
             log("Player list synced successfully.");
         } else if (response.rfind("ENDPOINT_LIST:", 0) == 0) {
             connectedEndpoints.clear();
-            std::istringstream ss(response.substr(14)); // 跳过 "ENDPOINT_LIST:"
+            std::istringstream ss(response.substr(14)); // Skip "ENDPOINT_LIST:"
             std::string endpointStr;
             while (std::getline(ss, endpointStr, ',')) {
                 auto delimiterPos = endpointStr.find(':');
@@ -162,7 +157,6 @@ bool Network::joinRoom(const std::string& address, int port) {
             return false;
         }
 
-        // 广播更新后的玩家列表给所有客户端
         broadcastPlayerList();
 
         return true;
@@ -174,35 +168,35 @@ bool Network::joinRoom(const std::string& address, int port) {
 
 void Network::handleJoinRoomRequest(const boost::asio::ip::udp::endpoint& clientEndpoint, const std::string& message) {
     if (message == "JOIN_ROOM") {
-        // 添加新客户端到房主的 connectedEndpoints
+        // Add new client to connectedEndpoints
         if (std::find(connectedEndpoints.begin(), connectedEndpoints.end(), clientEndpoint) == connectedEndpoints.end()) {
             connectedEndpoints.push_back(clientEndpoint);
             log("Added new client to connectedEndpoints: " + clientEndpoint.address().to_string() + ":" + std::to_string(clientEndpoint.port()));
         }
 
-        // 构造玩家列表响应并发送给新客户端
+        // Broadcast player list to all clients
         std::string playerListMessage = "PLAYER_LIST:";
         for (const auto& player : playerList) {
             playerListMessage += player + ",";
         }
         if (!playerList.empty()) {
-            playerListMessage.pop_back(); // 移除最后的逗号
+            playerListMessage.pop_back(); // Remove trailing comma
         }
         socket.send_to(boost::asio::buffer(playerListMessage), clientEndpoint);
         log("Sent player list to new client: " + playerListMessage);
 
-        // 构造终端节点列表并发送给新客户端
+        // Broadcast connected endpoints to all clients
         std::string endpointListMessage = "ENDPOINT_LIST:";
         for (const auto& endpoint : connectedEndpoints) {
             endpointListMessage += endpoint.address().to_string() + ":" + std::to_string(endpoint.port()) + ",";
         }
         if (!connectedEndpoints.empty()) {
-            endpointListMessage.pop_back(); // 移除最后的逗号
+            endpointListMessage.pop_back(); // Remove trailing comma
         }
         socket.send_to(boost::asio::buffer(endpointListMessage), clientEndpoint);
         log("Sent endpoint list to new client: " + endpointListMessage);
 
-        // 向房间内其他客户端广播新客户端的终端节点
+        // Broadcast new client to all other clients
         std::string newClientMessage = "NEW_CLIENT:" + clientEndpoint.address().to_string() + ":" + std::to_string(clientEndpoint.port());
         for (const auto& endpoint : connectedEndpoints) {
             if (endpoint != clientEndpoint) { // 不向新客户端重复发送
@@ -211,7 +205,6 @@ void Network::handleJoinRoomRequest(const boost::asio::ip::udp::endpoint& client
             }
         }
 
-        // 广播更新后的玩家列表给所有客户端
         broadcastPlayerList();
     }
 }
@@ -221,19 +214,17 @@ void Network::broadcastRoomState(const std::string& message, int port) {
         boost::asio::ip::udp::endpoint broadcastEndpoint(boost::asio::ip::address_v4::broadcast(), port);
         socket.set_option(boost::asio::socket_base::broadcast(true));
 
-        // 定时器共享指针
+        // Shared timer and callback to avoid lifetime issues
         auto timer = std::make_shared<boost::asio::steady_timer>(ioContext);
 
-        // 捕获 timerCallback 为值，避免生命周期问题
         auto timerCallback = std::make_shared<std::function<void(const boost::system::error_code&)>>();
         *timerCallback = [this, timer, message, broadcastEndpoint, timerCallback](const boost::system::error_code& error) {
             if (!error) {
-                // 发送广播消息
+                // Broadcast only if the game has not started
                 if(!gameStarted){
                     socket.send_to(boost::asio::buffer(message), broadcastEndpoint);
                     log("Broadcast message sent: " + message);
 
-                    // 设置下一次定时器
                     timer->expires_after(std::chrono::seconds(2));
                     timer->async_wait(*timerCallback);
                 }
@@ -242,11 +233,11 @@ void Network::broadcastRoomState(const std::string& message, int port) {
             }
         };
 
-        // 初始定时器设置和启动
-        timer->expires_after(std::chrono::seconds(0)); // 立即启动
+        // Initialize the timer and start the broadcast loop
+        timer->expires_after(std::chrono::seconds(0));
         timer->async_wait(*timerCallback);
 
-        // 启动 ioContext 的事件循环
+        // Start the ioContext to handle asynchronous operations
         std::thread([this]() {
             try {
                 log("Starting ioContext.run() for broadcast.");
@@ -261,15 +252,14 @@ void Network::broadcastRoomState(const std::string& message, int port) {
     }
 }
 
+// Stop listening for broadcast messages and return the port number for further use
 int Network::stopListening() {
-    int port = 0; // 默认返回值为 0，表示未成功获取端口号
+    int port = 0;
     try {
-        // 确保在关闭 socket 之前获取端口号
         if (socket.is_open()) {
-            port = socket.local_endpoint().port(); // 获取监听的端口号
+            port = socket.local_endpoint().port();
         }
 
-        // 停止 io_context 和关闭 socket
         ioContext.stop();
         socket.close();
         log("Listening stopped. Port: " + std::to_string(port));
@@ -281,6 +271,7 @@ int Network::stopListening() {
     return port;
 }
 
+// Get the local IP address of the machine
 std::string Network::getLocalIPAddress() {
     try {
         boost::asio::io_context ioContext;
@@ -315,13 +306,12 @@ void Network::broadcastPlayerList() {
         listMessage += player + ",";
     }
     if (!playerList.empty()) {
-        listMessage.pop_back(); // 移除最后的逗号
+        listMessage.pop_back();
     }
     for (const auto& endpoint : connectedEndpoints) {
         socket.send_to(boost::asio::buffer(listMessage), endpoint);
         log("Broadcasted player list to: " + endpoint.address().to_string() + ":" + std::to_string(endpoint.port()));
     }
-    // log("Broadcasted player list to all clients: " + listMessage);
 }
 
 void Network::syncPlayerList(const boost::asio::ip::udp::endpoint& target) {
@@ -334,16 +324,16 @@ void Network::syncPlayerList(const boost::asio::ip::udp::endpoint& target) {
     socket.send_to(boost::asio::buffer(listMessage), target);
 }
 
+// Handle player list updates
 void Network::handlePlayerListUpdate(const std::string& message) {
     if (message.rfind("PLAYER_LIST:", 0) == 0) {
         playerList.clear();
-        std::istringstream ss(message.substr(12)); // 跳过 "PLAYER_LIST:"
+        std::istringstream ss(message.substr(12)); // Skip "PLAYER_LIST:"
         std::string player;
         while (std::getline(ss, player, ',')) {
             playerList.push_back(player);
         }
         log("Player list updated: " + message);
-        // std::lock_guard<std::mutex> lock(roomViewMutex);
         if (roomView) {
             roomView->updatePlayers(playerList);
         } else {
@@ -361,11 +351,10 @@ std::vector<std::string> Network::getPlayerList() const {
     return playerList;
 }
 
-
+// Initialize the room view for the network, the callbacks for the buttons
 void Network::initializeRoomView(SDL_Renderer* renderer, bool isHost, const std::string& playerName) {
     roomView = new RoomView(renderer, isHost);
 
-    // 设置 Leave Room 回调
     roomView->setLeaveRoomCallback([this, playerName]() {
         removePlayer(playerName);  // 使用传递的玩家名称
         broadcastPlayerList();
@@ -373,7 +362,6 @@ void Network::initializeRoomView(SDL_Renderer* renderer, bool isHost, const std:
         roomView->quitRendering();
     });
 
-    // 设置 Ready 回调
     roomView->setReadyCallback([this, playerName](bool isReady) {
         std::string message = isReady ? "READY:" + playerName : "CANCEL_READY:" + playerName;
         handleReadyState(message);
@@ -384,7 +372,6 @@ void Network::initializeRoomView(SDL_Renderer* renderer, bool isHost, const std:
         log(playerName + (isReady ? " is ready." : " canceled ready."));
     });
 
-    // 设置 Start Game 回调（仅限房主）
     if (isHost) {
         roomView->setStartGameCallback([this]() {
             if (allPlayersReady()) {
@@ -401,16 +388,16 @@ void Network::initializeRoomView(SDL_Renderer* renderer, bool isHost, const std:
 
 void Network::handleReadyState(const std::string& message) {
     if (message.rfind("READY:", 0) == 0) {
-        std::string playerName = message.substr(6);  // 提取玩家名称
+        std::string playerName = message.substr(6);
         auto it = std::find(playerList.begin(), playerList.end(), playerName);
         if (it != playerList.end() && it->find("(Ready)") == std::string::npos) {
             *it += " (Ready)";
         }
     } else if (message.rfind("CANCEL_READY:", 0) == 0) {
-        std::string playerName = message.substr(13);  // 提取玩家名称
+        std::string playerName = message.substr(13);
         auto it = std::find(playerList.begin(), playerList.end(), playerName);
         if (it != playerList.end()) {
-            *it = playerName;  // 移除 "(Ready)" 标记
+            *it = playerName;  // Remove "(Ready)"
         }
     }
 }
@@ -420,40 +407,14 @@ void Network::startGameSession() {
         log("Warning: No game state callback set. State updates may be ignored.");
     }
     if (!gameSessionStarted) {
-        // 仅在首次调用时广播游戏开始消息
         std::string startMessage = "START_GAME";
         for (const auto& endpoint : connectedEndpoints) {
             socket.send_to(boost::asio::buffer(startMessage), endpoint);
             log("Sent START_GAME to: " + endpoint.address().to_string() + ":" + std::to_string(endpoint.port()));
         }
-        gameSessionStarted = true; // 标记游戏会话已启动
+        gameSessionStarted = true;
         log("Game session started.");
     }
-
-    // listenForGameUpdates();
-}
-
-void Network::listenForGameUpdates() {
-    socket.async_receive_from(
-        boost::asio::buffer(buffer), senderEndpoint,
-        [this](const boost::system::error_code& error, std::size_t bytesTransferred) {
-            if (!error) {
-                std::string state(buffer.data(), bytesTransferred);
-                log("Message received: " + state);
-                // 通知游戏模块处理接收到的状态
-                if (notifyGameStateCallback) {
-                    notifyGameStateCallback(senderEndpoint.address().to_string(), state);
-                }
-
-                // 继续监听
-                listenForGameUpdates();
-            } else if (error == boost::asio::error::operation_aborted) {
-                log("Game session listening stopped.");
-            } else {
-                log("Error receiving game state: " + error.message());
-                listenForGameUpdates();
-            }
-        });
 }
 
 void Network::setNotifyGameStateCallback(const std::function<void(const std::string&, const std::string&)>& callback) {
@@ -477,6 +438,7 @@ void Network::broadcastGameState(const std::string& state) {
     log("Broadcasted game state: " + state);
 }
 
+// Receive game state updates from all clients
 std::vector<std::pair<std::string, std::string>> Network::receiveGameStateUpdates() {
     std::vector<std::pair<std::string, std::string>> updates;
     while (true) {

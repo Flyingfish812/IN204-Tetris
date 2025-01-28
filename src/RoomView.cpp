@@ -7,6 +7,7 @@
 extern std::ofstream logFile;
 extern void log(const std::string& message);
 
+// Initialize, the buttons
 RoomView::RoomView(SDL_Renderer* renderer, bool isHost)
     : renderer(renderer), isHost(isHost), selectedButtonIndex(0) {
     buttons.reserve(2);
@@ -67,19 +68,16 @@ void RoomView::render() {
     quit = false;
 
     while (!quit) {
-        // 清屏
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
 
-        // 渲染玩家列表
         renderPlayers();
 
-        // 渲染按钮
+        // Buttons
         for (size_t i = 0; i < buttons.size(); ++i) {
             buttons[i].render(i == selectedButtonIndex);
         }
 
-        // 更新屏幕
         SDL_RenderPresent(renderer);
 
         while (SDL_PollEvent(&e) != 0) {
@@ -92,7 +90,6 @@ void RoomView::render() {
                     selectedButtonIndex = (selectedButtonIndex + 1) % buttons.size();
                 } else if (e.key.keysym.sym == SDLK_RETURN) {
                     buttons[selectedButtonIndex].handleClick();
-                    // quit = true;
                 }
             }
         }
@@ -140,7 +137,6 @@ void RoomView::renderPlayers() {
 
 void RoomView::updatePlayers(const std::vector<std::string>& updatedPlayers) {
     players = updatedPlayers;
-    // renderPlayers();
     log("Player list updated.");
 }
 

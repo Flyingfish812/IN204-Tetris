@@ -20,8 +20,8 @@ public:
     int getGridXOffset() const { return gridXOffset; }
     int getGridYOffset() const { return gridYOffset; }
 
-    std::string serialize() const; // 序列化网格状态
-    void deserialize(const std::string& data); // 反序列化网格状态
+    std::string serialize() const;
+    void deserialize(const std::string& data);
     int getWidth() const { return width; }
     int getHeight() const { return height; }
     std::vector<std::vector<int>> getGrid() const { return grid; }
@@ -30,7 +30,7 @@ public:
 private:
     int width, height;
     std::vector<std::vector<int>> grid;
-    std::vector<std::vector<int>> gridColors; // 颜色存储
+    std::vector<std::vector<int>> gridColors;
 
     int gridPixelWidth;
     int gridPixelHeight;

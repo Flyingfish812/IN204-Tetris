@@ -28,9 +28,9 @@ public:
 
 private:
     SDL_Renderer* renderer;
-    std::vector<Button> buttons; // 按钮列表
-    size_t selectedButtonIndex;     // 当前选中的按钮索引
-    MenuState currentState;      // 当前菜单状态
+    std::vector<Button> buttons;
+    size_t selectedButtonIndex;
+    MenuState currentState;
     std::string title;
 };
 

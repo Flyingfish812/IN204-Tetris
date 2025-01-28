@@ -15,13 +15,13 @@ public:
     void update(Uint32 deltaTime) override;
     void render() override;
 
-    void syncState(); // 同步当前状态到网络
-    void handleRemoteState(const std::string& playerId, const std::string& state); // 处理远程玩家状态
+    void syncState();
+    void handleRemoteState(const std::string& playerId, const std::string& state);
 
 private:
     Network* network;
-    std::map<std::string, std::string> playerStates; // 其他玩家的状态映射
-    void renderOtherPlayers(int x, int y, int width, int height); // 渲染其他玩家的状态
+    std::map<std::string, std::string> playerStates;
+    void renderOtherPlayers(int x, int y, int width, int height);
 };
 
 #endif // ONLINE_GAME_H

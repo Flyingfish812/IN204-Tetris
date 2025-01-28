@@ -20,17 +20,16 @@ Button::~Button() {
 }
 
 void Button::render(bool isSelected) {
-    // 设置按钮颜色
     if (isSelected) {
-        SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255); // 高亮颜色
+        SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255); // Highlighted color
     } else {
-        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255); // 普通颜色
+        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255); // Default color
     }
 
-    // 绘制按钮背景
+    // Button background
     SDL_RenderFillRect(renderer, &rect);
 
-    // 绘制按钮文本
+    // Text
     int textWidth, textHeight;
     SDL_QueryTexture(textTexture, nullptr, nullptr, &textWidth, &textHeight);
     SDL_Rect textRect = {rect.x + (rect.w - textWidth) / 2, rect.y + (rect.h - textHeight) / 2, textWidth, textHeight};

@@ -4,7 +4,7 @@
 OnlineGame::OnlineGame(SDL_Renderer* renderer, Network* network)
     : Game(renderer), network(network) {
     network->setNotifyGameStateCallback([this](const std::string& playerId, const std::string& state) {
-        handleRemoteState(playerId, state); // 处理远程玩家的状态更新
+        handleRemoteState(playerId, state);
     });
     log("OnlineGame initialized.");
 }
@@ -25,6 +25,7 @@ void OnlineGame::render() {
     renderOtherPlayers(400, 50, 150, 400); // 右侧状态栏位置
 }
 
+// Syncronize the game state with other players
 void OnlineGame::syncState() {
     std::ostringstream oss;
     oss << grid->serialize() << "|" 
@@ -33,6 +34,7 @@ void OnlineGame::syncState() {
     network->broadcastGameState(oss.str());
 }
 
+// Handle remote player state updates
 void OnlineGame::handleRemoteState(const std::string& playerId, const std::string& state) {
     std::istringstream iss(state);
     std::string gridState, blockState, scoreState;
@@ -49,7 +51,7 @@ void OnlineGame::handleRemoteState(const std::string& playerId, const std::strin
     
     int playerScore = std::stoi(scoreState);
     
-    // 将状态存储
+    // Store the state
     std::ostringstream renderedState;
     
     renderedState << tempGrid.serialize() 
@@ -63,27 +65,24 @@ void OnlineGame::renderOtherPlayers(int x, int y, int width, int height) {
     if (playerCount == 0) return;
     log("Rendering other players...");
 
-    int gridHeight = height / playerCount; // 每个玩家的网格占用高度
-    int gridWidth = width;                // 网格宽度固定为传入的宽度
-    int cellSize = std::min(gridWidth / 10, gridHeight / 20); // 缩小版网格每个单元格大小
+    int gridHeight = height / playerCount;
+    int gridWidth = width;
+    int cellSize = std::min(gridWidth / 10, gridHeight / 20);
     int gridYOffset = y;
 
-    // SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-
     for (const auto& [playerId, state] : playerStates) {
-        // 反序列化玩家的网格状态
-        Grid tempGrid(10, 20); // 假设网格是固定大小
+        Grid tempGrid(10, 20);
         std::istringstream stateStream(state);
         std::string gridData, blockData, scoreData;
         std::getline(stateStream, gridData, '|');
         tempGrid.deserialize(gridData);
 
-        // 绘制背景
+        // Background
         SDL_Rect gridBackground = {x, gridYOffset, gridWidth, gridHeight};
         SDL_SetRenderDrawColor(renderer, 25, 25, 25, 255);
         SDL_RenderFillRect(renderer, &gridBackground);
 
-        // 绘制网格中的固定方块
+        // Blocks
         const auto& gridMatrix = tempGrid.getGrid();
         const auto& gridColors = tempGrid.getGridColors();
         for (int i = 0; i < tempGrid.getHeight(); ++i) {
@@ -102,7 +101,7 @@ void OnlineGame::renderOtherPlayers(int x, int y, int width, int height) {
             }
         }
 
-        // 绘制玩家名称或标识
+        // Player name
         TTF_Font* font = TTF_OpenFont("fonts/arial.ttf", 16);
         if (font) {
             SDL_Color textColor = {255, 255, 255, 255};
@@ -117,8 +116,8 @@ void OnlineGame::renderOtherPlayers(int x, int y, int width, int height) {
             TTF_CloseFont(font);
         }
 
-        // 更新 Y 偏移以渲染下一个玩家
-        gridYOffset += gridHeight + 10; // 每个玩家网格之间有10像素间隔
+        // Offset for next player
+        gridYOffset += gridHeight + 10;
     }
 }
 
@@ -142,6 +141,6 @@ void OnlineGame::show() {
         update(deltaTime);
         render();
         
-        SDL_Delay(16); // 控制帧率 (约60 FPS)
+        SDL_Delay(16);
     }
 }

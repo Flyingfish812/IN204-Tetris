@@ -24,7 +24,6 @@ RoomList::~RoomList() {
 void RoomList::addRoom(const std::string& roomInfo) {
     SDL_Rect rect = {100, static_cast<int>(buttons.size() * 60 + 150), 600, 50};
     buttons.emplace_back(renderer, roomInfo, rect, [roomInfo, this]() {
-        // log("Room selected: " + roomInfo);
         if (onRoomSelected) {
             onRoomSelected(roomInfo);
         }
@@ -40,35 +39,32 @@ void RoomList::setRoomSelectedCallback(const std::function<void(const std::strin
 }
 
 void RoomList::refreshRoomList(const std::vector<std::string>& newRoomList) {
-    // 转换新房间列表为集合
+    // Deduplicate the room lists
     std::unordered_set<std::string> newRooms(newRoomList.begin(), newRoomList.end());
 
-    // 查找需要添加的房间
+    // Find the rooms that need to be added
     for (const auto& room : newRoomList) {
         if (currentRooms.find(room) == currentRooms.end()) {
-            // 如果是新房间，添加按钮
             addRoom(room);
         }
     }
 
-    // 查找需要移除的房间
+    // Find the rooms that need to be removed
     for (auto it = currentRooms.begin(); it != currentRooms.end();) {
         if (newRooms.find(*it) == newRooms.end()) {
-            // 如果房间已不存在，移除按钮
             auto removeIt = std::find_if(buttons.begin(), buttons.end(),
                                          [&it](const Button& button) {
                                              return button.getText() == *it;
                                          });
             if (removeIt != buttons.end()) {
-                buttons.erase(removeIt); // 从按钮列表中移除
+                buttons.erase(removeIt);
             }
-            it = currentRooms.erase(it); // 从当前房间集合中移除
+            it = currentRooms.erase(it);
         } else {
             ++it;
         }
     }
 
-    // 更新当前房间集合
     currentRooms = std::move(newRooms);
 }
 

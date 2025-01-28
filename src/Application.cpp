@@ -8,7 +8,7 @@
 
 std::ofstream logFile;
 
-// 初始化日志文件
+// Initialize the log file
 void initLog() {
     // Get current time
     auto t = std::time(nullptr);
@@ -27,14 +27,14 @@ void initLog() {
     logFile << "Log initialized at: " << std::put_time(&tm, "%Y-%m-%d %H:%M:%S") << std::endl;
 }
 
-// 写入日志
+// Write a message to the log file
 extern void log(const std::string& message) {
     if (logFile.is_open()) {
         logFile << message << std::endl;
     }
 }
 
-// 在程序结束时关闭日志
+// Close the log file
 void closeLog() {
     if (logFile.is_open()) {
         logFile << "Log closed." << std::endl;
@@ -43,7 +43,7 @@ void closeLog() {
 }
 
 Application::Application() {
-    initLog(); // 初始化日志
+    initLog();
     log("Application starting...");
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         logFile << "SDL Initialization failed: " << SDL_GetError() << std::endl;
@@ -52,15 +52,6 @@ Application::Application() {
     TTF_Init();
     window = SDL_CreateWindow("Tetris", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 600, SDL_WINDOW_SHOWN);
     renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
-
-    // try {
-    //     io.run();
-    //     log("Success.");
-    // } catch (const std::exception& e) {
-    //     logFile << "Standard exception: " << e.what() << std::endl;
-    // }
-    // Initialize the network
-    log("Initialize the network...");
 
     // Initialize the main menu
     menu = new Menu(renderer);
@@ -79,6 +70,7 @@ Application::Application() {
         menu->setState(MenuState::Exit);
     });
 
+    // Initialize the multiplayer menu
     multiplayerMenu = new Menu(renderer);
     multiplayerMenu->setTitle("Multiplayer Choices");
     multiplayerMenu->addButton("Create Room", SDL_Rect{300, 200, 200, 50}, [this]() {
@@ -104,10 +96,6 @@ Application::Application() {
         log("Game started. Transitioning to game screen...");
         startTogether = true;
     });
-
-    // network.setNotifyGameStateCallback([this](const std::string& playerId, const std::string& state) {
-    //     log("Received state from " + playerId + ": " + state);
-    // });
 }
 
 Application::~Application() {
@@ -128,12 +116,10 @@ void Application::run() {
 
         switch (state) {
             case MenuState::StartGame:
-                // game->reset();
                 game->show();
                 break;
             case MenuState::Multiplayer:
                 multiplayerMenu->show();
-                // log("Multiplayer mode not implemented yet!");
                 break;
             case MenuState::Exit:
                 running = false;
@@ -141,46 +127,41 @@ void Application::run() {
             default:
                 break;
         }
-
         menu->resetState();
     }
 }
 
-// The following code excerpts show the changes required in Application.cpp
-
 void Application::createRoom() {
+    // Room setup
     network.initializeRoomView(renderer, true, "Host");
     int roomPort = 12345;
     int destPort = 54321;
     network.initializeEndPoints();
     network.startListening(roomPort);
-    
     log("Room created and listening started on port " + std::to_string(roomPort));
 
-    // std::lock_guard<std::mutex> lock(network.roomViewMutex);
-    // network.roomView = new RoomView(renderer, true);
-
+    // Broadcast room info
     std::string localIP = network.getLocalIPAddress();
     std::string roomInfo = "Room hosted by " + localIP;
     network.broadcastRoomState(roomInfo, destPort);
     log("Broadcasting room info: " + roomInfo);
 
+    // Add host to the room
     network.addPlayer("Host (Ready)");
     log("Host added to the room.");
 
-    // RoomView roomView(renderer, true);
     network.roomView->addPlayer("Host (Ready)");
     log("Switched to RoomView rendering after creating the room.");
     network.roomView->render();
 
-    if(startTogether) {
+    // Start the game if all players are ready
+    if (startTogether) {
         onlineGame->show();
         startTogether = false;
     }
 
     network.stopListening();
-    
-    // std::lock_guard<std::mutex> lock(network.roomViewMutex);
+
     delete network.roomView;
     network.roomView = nullptr;
 }
@@ -203,7 +184,6 @@ void Application::joinRoom() {
     // Set callback for return action
     roomList.setReturnCallback([this]() {
         log("Return to main menu");
-        // Logic to return to the main menu can be added here
     });
 
     // Set callback for refreshing room list
@@ -217,7 +197,7 @@ void Application::joinRoom() {
     // Update room list when receiving broadcasts
     network.onRoomStateUpdate = [&roomList](const std::string& roomInfo) {
         log("Received room broadcast: " + roomInfo);
-        roomList.addRoom(roomInfo); // Dynamically add room to the list
+        roomList.addRoom(roomInfo);
     };
 
     // Start listening for room broadcasts
@@ -232,7 +212,7 @@ void Application::joinRoom() {
 void Application::handleRoomSelection(const std::string& roomInfo) {
     log("Joining room: " + roomInfo);
 
-    // 提取房主地址和端口
+    // Get the address and the port
     std::string hostAddress;
     const std::string prefix = "Room hosted by ";
     size_t startPos = roomInfo.find(prefix);
@@ -241,33 +221,28 @@ void Application::handleRoomSelection(const std::string& roomInfo) {
         hostAddress = roomInfo.substr(startPos);
     } else {
         log("Invalid roomInfo format: " + roomInfo + ", use default address");
-        hostAddress = "127.0.0.1"; // 或者可以抛出异常
+        hostAddress = "127.0.0.1";
     }
     
     int hostPort = 12345;
-
-    // 调用 Network 的 joinRoom 方法
     network.joinRoom(hostAddress, hostPort);
 
-    // 更新玩家列表
-    // std::lock_guard<std::mutex> lock(network.roomViewMutex);
+    // Renew the player list
     for (const auto& player : network.getPlayerList()) {
         network.roomView->addPlayer(player);
     }
-
-    // 添加当前玩家到本地和远程房间
     std::string playerName = "Guest Player";
     network.addPlayer(playerName);
     network.roomView->addPlayer(playerName);
     log("Switched to RoomView rendering with updated player list.");
     network.roomView->render();
 
+    // Game start
     if(startTogether) {
         onlineGame->show();
         startTogether = false;
     }
-    
-    // std::lock_guard<std::mutex> lock(network.roomViewMutex);
+
     delete network.roomView;
     network.roomView = nullptr;
 }

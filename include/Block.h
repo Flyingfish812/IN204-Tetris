@@ -17,14 +17,14 @@ public:
     int getX() const;
     int getY() const;
     
-    std::string serialize() const; // 序列化方块状态
-    void deserialize(const std::string& data); // 反序列化方块状态
+    std::string serialize() const;
+    void deserialize(const std::string& data);
 
 private:
     BlockType type;
-    std::vector<std::vector<int>> shape; // 形状的二维矩阵
-    int x, y; // 方块位置
-    int color; // 方块颜色
+    std::vector<std::vector<int>> shape;
+    int x, y;
+    int color;
 };
 
 #endif

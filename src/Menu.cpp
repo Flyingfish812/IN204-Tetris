@@ -42,7 +42,7 @@ void Menu::show() {
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
 
-        // 渲染标题
+        // Title
         if (!title.empty()) {
             TTF_Font* font = TTF_OpenFont("fonts/arial.ttf", 24);
 
@@ -59,7 +59,7 @@ void Menu::show() {
             }
         }
 
-        // 渲染所有按钮
+        // Buttons
         for (size_t i = 0; i < buttons.size(); ++i) {
             buttons[i].render(i == selectedButtonIndex);
         }
@@ -68,7 +68,6 @@ void Menu::show() {
 
         while (SDL_PollEvent(&e) != 0) {
             if (e.type == SDL_QUIT) {
-                // currentState = MenuState::Exit;
                 quit = true;
             } else if (e.type == SDL_KEYDOWN) {
                 if (e.key.keysym.sym == SDLK_UP) {
@@ -77,7 +76,7 @@ void Menu::show() {
                     selectedButtonIndex = (selectedButtonIndex + 1) % buttons.size();
                 } else if (e.key.keysym.sym == SDLK_RETURN) {
                     buttons[selectedButtonIndex].handleClick();
-                    quit = true; // 退出菜单循环
+                    quit = true;
                 }
             }
         }

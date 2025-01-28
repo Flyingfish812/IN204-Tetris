@@ -29,7 +29,6 @@ private:
     Menu* multiplayerMenu;
     Game* game;
     OnlineGame* onlineGame;
-    // boost::asio::io_context io;
     Network network;
     bool startTogether = false;
 };
