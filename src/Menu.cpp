@@ -1,99 +1,93 @@
 #include "Menu.h"
-#include <SDL.h>
-#include <SDL_ttf.h>
+#include "Button.h"
+#include <iostream>
+#include <fstream>
 
-Menu::Menu(SDL_Renderer* renderer) : renderer(renderer), start(false), selectedStart(true), selectedExit(false) {}
+extern std::ofstream logFile;
+extern void log(const std::string& message);
 
-Menu::~Menu() {}
+Menu::Menu(SDL_Renderer* renderer) 
+    : renderer(renderer), selectedButtonIndex(0), currentState(MenuState::None), title("Title") {
+    buttons.reserve(3);
+}
+
+Menu::~Menu() {
+    TTF_Quit();
+}
+
+void Menu::addButton(const std::string& text, const SDL_Rect& rect, const std::function<void()>& callback) {
+    try {
+        buttons.emplace_back(renderer, text, rect, callback);
+        logFile << "Button added: " << text << std::endl;
+    } catch (const std::exception& e) {
+        logFile << "Error creating button: " << e.what() << std::endl;
+    } catch (...) {
+        logFile << "Unknown error creating button" << std::endl;
+    }
+}
+
+void Menu::setState(MenuState state) {
+    currentState = state;    
+}
+
+void Menu::setTitle(const std::string& titleName) {
+    title = titleName;
+}
 
 void Menu::show() {
     SDL_Event e;
     bool quit = false;
 
-    TTF_Init();
-    TTF_Font* font = TTF_OpenFont("fonts/arial.ttf", 24);
-    SDL_Color textColor = {0, 0, 0, 0};
-
-    SDL_Surface* startTextSurface = TTF_RenderText_Solid(font, "Start Game", textColor);
-    SDL_Texture* startText = SDL_CreateTextureFromSurface(renderer, startTextSurface);
-
-    SDL_Surface* exitTextSurface = TTF_RenderText_Solid(font, "Exit Game", textColor);
-    SDL_Texture* exitText = SDL_CreateTextureFromSurface(renderer, exitTextSurface);
-
-    SDL_FreeSurface(startTextSurface);
-    SDL_FreeSurface(exitTextSurface);
-
     while (!quit) {
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
 
-        // Draw buttons
-        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-        SDL_Rect startButton = {300, 200, 200, 50};
-        SDL_Rect exitButton = {300, 300, 200, 50};
-        SDL_RenderFillRect(renderer, &startButton);
-        SDL_RenderFillRect(renderer, &exitButton);
+        // 渲染标题
+        if (!title.empty()) {
+            TTF_Font* font = TTF_OpenFont("fonts/arial.ttf", 24);
 
-        // Render button labels
-        SDL_Rect startTextRect = {330, 215, 140, 20};
-        SDL_Rect exitTextRect = {340, 315, 120, 20};
-        SDL_RenderCopy(renderer, startText, NULL, &startTextRect);
-        SDL_RenderCopy(renderer, exitText, NULL, &exitTextRect);
+            if (font) {
+                SDL_Color textColor = {255, 255, 255, 255};
+                SDL_Surface* holdSurface = TTF_RenderText_Solid(font, title.c_str(), textColor);
+                SDL_Texture* holdTexture = SDL_CreateTextureFromSurface(renderer, holdSurface);
 
-        // Highlight selected button
-        if (selectedStart) {
-            SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-            SDL_Rect highlight = {295, 195, 210, 60};
-            SDL_RenderDrawRect(renderer, &highlight);
-        } else if (selectedExit) {
-            SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-            SDL_Rect highlight = {295, 295, 210, 60};
-            SDL_RenderDrawRect(renderer, &highlight);
+                SDL_Rect holdTextRect = {400 - holdSurface->w / 2, 100, holdSurface->w, holdSurface->h};
+                SDL_RenderCopy(renderer, holdTexture, NULL, &holdTextRect);
+
+                SDL_FreeSurface(holdSurface);
+                SDL_DestroyTexture(holdTexture);
+            }
+        }
+
+        // 渲染所有按钮
+        for (size_t i = 0; i < buttons.size(); ++i) {
+            buttons[i].render(i == selectedButtonIndex);
         }
 
         SDL_RenderPresent(renderer);
 
         while (SDL_PollEvent(&e) != 0) {
             if (e.type == SDL_QUIT) {
+                // currentState = MenuState::Exit;
                 quit = true;
-            } else if (e.type == SDL_MOUSEBUTTONDOWN) {
-                int x = e.button.x;
-                int y = e.button.y;
-
-                if (x > 300 && x < 500) {
-                    if (y > 200 && y < 250) {
-                        start = true;
-                        quit = true;
-                    } else if (y > 300 && y < 350) {
-                        quit = true;
-                    }
-                }
             } else if (e.type == SDL_KEYDOWN) {
-                if (e.key.keysym.sym == SDLK_UP || e.key.keysym.sym == SDLK_DOWN) {
-                    selectedStart = !selectedStart;
-                    selectedExit = !selectedExit;
+                if (e.key.keysym.sym == SDLK_UP) {
+                    selectedButtonIndex = (selectedButtonIndex - 1 + buttons.size()) % buttons.size();
+                } else if (e.key.keysym.sym == SDLK_DOWN) {
+                    selectedButtonIndex = (selectedButtonIndex + 1) % buttons.size();
                 } else if (e.key.keysym.sym == SDLK_RETURN) {
-                    if (selectedStart) {
-                        start = true;
-                    }
-                    quit = true;
+                    buttons[selectedButtonIndex].handleClick();
+                    quit = true; // 退出菜单循环
                 }
             }
         }
     }
-
-    SDL_DestroyTexture(startText);
-    SDL_DestroyTexture(exitText);
-    TTF_CloseFont(font);
-    TTF_Quit();
 }
 
-bool Menu::startSelected() const {
-    return start;
+MenuState Menu::getSelectedState() const {
+    return currentState;
 }
 
 void Menu::resetState() {
-    start = false;
-    selectedStart = true;
-    selectedExit = false;
+    currentState = MenuState::None;
 }

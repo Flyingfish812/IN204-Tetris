@@ -1,6 +1,13 @@
 #include "Block.h"
 #include <cstdlib>
 #include <vector>
+#include <sstream>
+#include <iostream>
+#include <fstream>
+
+extern std::ofstream logFile;
+extern void log(const std::string& message);
+
 
 // 方块的初始形状定义
 const std::vector<std::vector<std::vector<int>>> SHAPES = {
@@ -77,3 +84,44 @@ int Block::getColor() const { return color; }
 
 int Block::getX() const { return x; }
 int Block::getY() const { return y; }
+
+std::string Block::serialize() const {
+    std::ostringstream oss;
+    oss << static_cast<int>(type) << ";" << color << ";" << x << ";" << y << ";";
+    for (const auto& row : shape) {
+        for (const auto& cell : row) {
+            oss << cell << ",";
+        }
+        oss << ";";
+    }
+    return oss.str();
+}
+
+void Block::deserialize(const std::string& data) {
+    std::istringstream iss(data);
+    std::string value;
+    
+    // 类型和颜色
+    std::getline(iss, value, ';');
+    type = static_cast<BlockType>(std::stoi(value));
+    std::getline(iss, value, ';');
+    color = std::stoi(value);
+
+    // 位置
+    std::getline(iss, value, ';');
+    x = std::stoi(value);
+    std::getline(iss, value, ';');
+    y = std::stoi(value);
+
+    // 形状
+    shape.clear();
+    while (std::getline(iss, value, ';')) {
+        std::vector<int> row;
+        std::istringstream rowStream(value);
+        std::string cell;
+        while (std::getline(rowStream, cell, ',')) {
+            row.push_back(std::stoi(cell));
+        }
+        shape.push_back(row);
+    }
+}

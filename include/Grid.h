@@ -4,6 +4,7 @@
 #include "Block.h"
 #include <SDL.h>
 #include <vector>
+#include <string>
 
 class Grid {
 public:
@@ -18,6 +19,13 @@ public:
     int getCellSize() const { return cellSize; }
     int getGridXOffset() const { return gridXOffset; }
     int getGridYOffset() const { return gridYOffset; }
+
+    std::string serialize() const; // 序列化网格状态
+    void deserialize(const std::string& data); // 反序列化网格状态
+    int getWidth() const { return width; }
+    int getHeight() const { return height; }
+    std::vector<std::vector<int>> getGrid() const { return grid; }
+    std::vector<std::vector<int>> getGridColors() const { return gridColors; }
 
 private:
     int width, height;

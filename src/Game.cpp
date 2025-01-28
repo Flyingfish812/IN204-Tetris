@@ -1,4 +1,5 @@
 #include "Game.h"
+#include "Button.h"
 #include <time.h>
 #include <SDL.h>
 #include <SDL_ttf.h>
@@ -7,14 +8,15 @@
 #include <fstream>
 
 extern std::ofstream logFile;
+extern void log(const std::string& message);
 
-Game::Game(SDL_Renderer* renderer) : renderer(renderer), paused(false), quit(false) {
+Game::Game(SDL_Renderer* renderer) : renderer(renderer), paused(false), quit(false), gameOver(false) {
     srand(static_cast<unsigned>(time(nullptr)));
     grid = new Grid(10, 20); // 初始化网格大小 (10列, 20行)
     currentBlock = new Block();
     nextBlock = new Block(); // 初始化下一个方块
     score = 0;               // 初始得分
-    speed = 1000;            // 初始下落速度
+    speed = 100;            // 初始下落速度
     timer = 0;
 }
 
@@ -26,14 +28,16 @@ Game::~Game() {
 
 
 void Game::reset() {
+    log("Game: reset");
     paused = false;
     quit = false;
     delete grid;
     grid = new Grid(10, 20);
     delete currentBlock;
     currentBlock = new Block();
-    speed = 1000;
+    speed = 100;
     timer = 0;
+    log("Reset complete");
 }
 
 void Game::handleInput() {
@@ -178,7 +182,8 @@ void Game::update(Uint32 deltaTime) {
             nextBlock = new Block();        // 生成新的下一个方块
 
             if (!grid->canPlace(*currentBlock)) {
-                quit = true; // 游戏结束
+                // quit = true;
+                gameOver = true;
             }
         }
         accumulatedTime = 0;
@@ -343,7 +348,56 @@ void Game::renderBlock(Block* block, SDL_Rect displayArea) {
     }
 }
 
+void Game::renderGameOver() {
+    bool showText = true;
+    Uint32 lastToggleTime = SDL_GetTicks();
+    const Uint32 toggleInterval = 500; // 闪烁间隔（毫秒）
+
+    // SDL_Color backgroundColor = {0, 0, 0, 255}; // 黑色背景
+
+    while (!quit) {
+        // 检测闪烁时间
+        Uint32 currentTime = SDL_GetTicks();
+        if (currentTime - lastToggleTime > toggleInterval) {
+            showText = !showText;
+            lastToggleTime = currentTime;
+        }
+
+        render();
+
+        // 渲染文本
+        if (showText) {
+            TTF_Init();
+            TTF_Font* font = TTF_OpenFont("fonts/arial.ttf", 24);
+            // 假设 createTextTexture 是一个生成文本纹理的函数
+            SDL_Color textColor = {255, 255, 255, 255};
+            SDL_Surface* textSurface = TTF_RenderText_Solid(font, "Game Over", textColor);
+            SDL_Texture* textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+
+            SDL_Rect scoreRect = {300, 200, 200, 50};
+            SDL_RenderCopy(renderer, textTexture, NULL, &scoreRect);
+            SDL_DestroyTexture(textTexture);
+        }
+
+        SDL_RenderPresent(renderer);
+
+        // 检查是否有按键按下
+        SDL_Event event;
+        while (SDL_PollEvent(&event)) {
+            if (event.type == SDL_KEYDOWN) {
+                quit = true;
+                return; // 任意按键退出
+            }
+        }
+        SDL_Delay(16); // 控制帧率
+    }
+}
+
 void Game::show() {
+    if(gameStarted){
+        return;
+    }
+    gameStarted = true;
     reset();
     Uint32 lastTime = SDL_GetTicks();
     while (!quit) {
@@ -351,8 +405,12 @@ void Game::show() {
             Uint32 currentTime = SDL_GetTicks();
             Uint32 deltaTime = currentTime - lastTime;
             lastTime = currentTime;
-
             handleInput();
+            if (gameOver) {
+                renderGameOver();
+                gameStarted = false;
+                return;
+            }
             update(deltaTime);
             render();
         } else {

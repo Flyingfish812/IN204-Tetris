@@ -1,5 +1,6 @@
 #include "Grid.h"
 #include <SDL.h>
+#include <sstream>
 
 Grid::Grid(int width, int height) : width(width), height(height) {
     grid.resize(height, std::vector<int>(width, 0)); // 初始化网格为 0
@@ -111,5 +112,34 @@ void Grid::render(SDL_Renderer* renderer, int windowWidth, int windowHeight) {
                 SDL_RenderFillRect(renderer, &rect);
             }
         }
+    }
+}
+
+std::string Grid::serialize() const {
+    std::ostringstream oss;
+    for (const auto& row : grid) {
+        for (const auto& cell : row) {
+            oss << cell << ",";
+        }
+        oss << ";";
+    }
+    return oss.str();
+}
+
+void Grid::deserialize(const std::string& data) {
+    std::istringstream iss(data);
+    std::string rowStr;
+    int rowIdx = 0;
+
+    while (std::getline(iss, rowStr, ';') && rowIdx < height) {
+        std::istringstream rowStream(rowStr);
+        std::string cellStr;
+        int colIdx = 0;
+
+        while (std::getline(rowStream, cellStr, ',') && colIdx < width) {
+            grid[rowIdx][colIdx] = std::stoi(cellStr);
+            ++colIdx;
+        }
+        ++rowIdx;
     }
 }

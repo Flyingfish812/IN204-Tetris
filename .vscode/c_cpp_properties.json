@@ -5,6 +5,7 @@
             "includePath": [
                 "${workspaceFolder}/include",
                 "${workspaceFolder}/include/SDL2",
+                "${workspaceFolder}/include/boost",
                 "C:/msys64/mingw64/include"       // MSYS2 Mingw 的头文件路径
             ],
             "defines": [
