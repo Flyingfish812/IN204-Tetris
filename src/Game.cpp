@@ -34,7 +34,7 @@ void Game::reset() {
     grid = new Grid(10, 20);
     delete currentBlock;
     currentBlock = new Block();
-    speed = 100;
+    speed = 1000;
     timer = 0;
     log("Reset complete");
 }
