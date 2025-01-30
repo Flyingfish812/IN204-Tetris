@@ -28,6 +28,7 @@ Game::~Game() {
 
 void Game::reset() {
     log("Game: reset");
+    gameOver = false;
     paused = false;
     quit = false;
     delete grid;
